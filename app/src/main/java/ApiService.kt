@@ -7,11 +7,11 @@ import retrofit2.http.*
 data class LoginRequest(val email: String, val password: String)
 data class PedidoRequest(val user: Int, val medicinas: List<Int>, val costototal: Double)
 
-// ✅ Nuevo payload fuerte para UPDATE (evita wildcards)
+// Payload fuerte (evita wildcards en Retrofit)
 data class UpdatePedidoPayload(
-    val medicinas: List<Int>,
-    val costototal: Double,
-    val status: String = "P" // opcional, pero muchos backends lo exigen
+    val medicinas: List<Int>? = null,
+    val costototal: Double? = null,
+    val status: String? = null // "P" o "C"
 )
 
 interface ApiService {
@@ -37,27 +37,20 @@ interface ApiService {
     @GET("asignacionmensual/get_asignacion_mensual/")
     fun getAsignacionMensual(@Query("id") id: Int): Call<Map<String, Any>>
 
-    // ——— Pedidos ———
+    // —— Pedidos ——
     @POST("pedidos/")
     suspend fun crearPedido(@Body request: PedidoRequest): Response<Map<String, Any>>
 
-    // ✅ Usa el data class (sin wildcards)
     @PATCH("pedidos/{id}/")
     suspend fun updatePedido(
         @Path("id") id: Int,
         @Body payload: UpdatePedidoPayload
     ): Response<Map<String, Any>>
 
-    @POST("pedidos/{id}/finalizar/")
-    suspend fun finalizarPedido(@Path("id") id: Int): Response<Unit>
-
     @GET("pedidos/historial/")
     fun getHistorial(@Query("user_id") userId: Int): Call<List<Map<String, Any>>>
 
-    // Dos variantes del “en progreso”
-    @GET("pedidos/en-progreso/{user}/")
-    suspend fun getPedidoEnProgreso(@Path("user") userId: Int): Response<Map<String, Any>>
-
+    // ÚNICO endpoint de "en progreso" en tu backend
     @GET("pedidos/en_progreso/")
-    suspend fun getPedidoEnProgresoAlt(@Query("user_id") userId: Int): Response<Map<String, Any>>
+    suspend fun getPedidoEnProgreso(@Query("user_id") userId: Int): Response<Map<String, Any>>
 }

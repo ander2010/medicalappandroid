@@ -68,7 +68,7 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
     val scope             = rememberCoroutineScope()
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
-    // Config
+    // ⚠️ Debe ser el PK de `Usuario` (modelo que usa Pedido.user)
     val userId       = 1
     val asignacionId = 12
 
@@ -118,7 +118,6 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
 
     fun aplicarSeleccionPrevia(meds: List<Int>) {
         if (sections.isEmpty()) {
-            // Aún no hay catálogo, guárdalas para aplicarlas cuando lleguen
             pendingMeds = meds
             return
         }
@@ -164,13 +163,9 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
         return Triple(id, status, medsIds)
     }
 
+    // —— Único endpoint real de tu backend
     suspend fun fetchPedidoEnProgreso(api: ApiService, userId: Int): Triple<Int?, String?, List<Int>>? {
         runCatching { api.getPedidoEnProgreso(userId) }.getOrNull()?.let { resp ->
-            if (resp.isSuccessful && resp.body() != null && resp.code() !in listOf(204, 404)) {
-                return parsePedidoBody(resp.body()!!)
-            }
-        }
-        runCatching { api.getPedidoEnProgresoAlt(userId) }.getOrNull()?.let { resp ->
             if (resp.isSuccessful && resp.body() != null && resp.code() !in listOf(204, 404)) {
                 return parsePedidoBody(resp.body()!!)
             }
@@ -178,7 +173,7 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
         return null
     }
 
-    // ——— Carga inicial (catálogo + primer fetch de pedido) ———
+    // ——— Carga inicial (catálogo + pedido) ———
     LaunchedEffect(Unit) {
         isLoading = true
         try {
@@ -212,7 +207,7 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
                             )
                         }
 
-                    // 1ª lectura del pedido existente
+                    // Pedido existente (en progreso)
                     val triple = fetchPedidoEnProgreso(api, userId)
                     if (triple != null) {
                         val (pid, status, meds) = triple
@@ -239,12 +234,11 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
         }
     }
 
-    // ——— Reload al volver (ON_RESUME): solo re-lee el pedido y aplica selección ———
+    // ——— Recarga al volver (ON_RESUME): solo pedido/selección ———
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _: LifecycleOwner, event: Lifecycle.Event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 scope.launch {
-                    // Evita parpadeo: no toques sections/budget; solo pedido/selección
                     val triple = fetchPedidoEnProgreso(api, userId)
                     triple?.let { (pid, status, meds) ->
                         pedidoId = pid
@@ -284,6 +278,12 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
             withContext(Dispatchers.IO) {
                 runCatching { api.crearPedido(payload) }.onSuccess { r ->
                     if (r.isSuccessful) {
+                        // ⚠️ Fuerza status "P" para que el GET en_progreso lo devuelva
+                        val createdId = (r.body()?.get("id") as? Number)?.toInt()
+                        if (createdId != null) {
+                            api.updatePedido(createdId, UpdatePedidoPayload(status = "P"))
+                        }
+
                         val again = fetchPedidoEnProgreso(api, userId)
                         withContext(Dispatchers.Main) {
                             if (again != null) {
@@ -329,7 +329,7 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
         val payload = UpdatePedidoPayload(
             medicinas = meds,
             costototal = total,
-            status = "P"
+            status = "P" // mantener en progreso mientras se edita
         )
 
         scope.launch(Dispatchers.IO) {
@@ -368,8 +368,10 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
 
     fun handleFinalizar() {
         val id = pedidoId ?: return
+        // Tu backend finaliza con PATCH status="C"
+        val payload = UpdatePedidoPayload(status = "C")
         scope.launch(Dispatchers.IO) {
-            runCatching { api.finalizarPedido(id) }.onSuccess { r ->
+            runCatching { api.updatePedido(id, payload) }.onSuccess { r ->
                 if (r.isSuccessful) {
                     withContext(Dispatchers.Main) {
                         pedidoFinalizado = true
@@ -379,9 +381,12 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        val msg = "Error al finalizar (${r.code()})"
-                        snackbarHostState.showSnackbar(msg)
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            mostrarErrorBackend(r) { msg ->
+                                snackbarHostState.showSnackbar(msg)
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 }
             }.onFailure {
