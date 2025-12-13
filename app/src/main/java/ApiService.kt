@@ -14,6 +14,32 @@ data class UpdatePedidoPayload(
     val status: String? = null // "P" o "C"
 )
 
+// ✅ MODELOS del endpoint get_user_information
+data class UserInformationResponse(
+    val user_id: Int? = null,              // recomendado que backend lo mande
+    val user_name: String = "",
+    val shipping_address: String? = null,
+    val user_monthly_budget: Double? = null,
+    val health_plan: HealthPlanDto? = null
+)
+
+data class HealthPlanDto(
+    val id: Int,
+    val name: String,
+    val description: String? = null,
+    val monthly_budget: Double? = null,
+    val health_insurance: InsuranceDto? = null
+)
+
+data class InsuranceDto(
+    val name: String = "",
+    val description: String? = null,
+    val email: String? = null,
+    val address: String? = null,
+    val phone: String? = null,
+    val insurance_id_number: String? = null
+)
+
 interface ApiService {
 
     @POST("register/")
@@ -53,4 +79,15 @@ interface ApiService {
     // ÚNICO endpoint de "en progreso" en tu backend
     @GET("pedidos/en_progreso/")
     suspend fun getPedidoEnProgreso(@Query("user_id") userId: Int): Response<Map<String, Any>>
+
+    @GET("asignacionmensual/get_asignaciones_por_plan_salud/")
+    suspend fun getAsignacionesPorPlan(
+        @Query("plan_salud") planSaludId: Int
+    ): Response<List<Map<String, Any>>>
+
+    // ✅ OJO: SIN "/" inicial (evita romper baseUrl)
+    @GET("usuariosplanes/get_user_information/")
+    fun getUserInformation(
+        @Query("user_id") userIdOrEmailOrName: String
+    ): Call<UserInformationResponse>
 }

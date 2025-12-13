@@ -1,7 +1,6 @@
 package com.example.medical_app
 
 import android.content.Intent
-
 import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
 import android.util.Log
@@ -29,7 +28,7 @@ import coil.compose.AsyncImage
 import com.tuapp.network.ApiClient
 import com.tuapp.network.ApiService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.awaitResponse
 
 data class UserData(
@@ -42,39 +41,102 @@ data class UserData(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ✅ Si NO hay token, manda a Login
+        val session = SessionManager(this)
+        if (!session.isLoggedIn()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         setContent {
             HomeScreen()
         }
     }
 }
+
 @Composable
 fun HomeScreen() {
     val api = ApiClient.instance.create(ApiService::class.java)
-    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     var userData by remember { mutableStateOf(UserData()) }
     var errorMsg by remember { mutableStateOf("") }
-    val context = LocalContext.current
+    var loading by remember { mutableStateOf(false) }
+
+    // ✅ Traer el valor real guardado (lo que antes era "letal")
+    val savedEmail = remember { sessionManager.getEmail() } // lo guardaste en Login
+    val savedToken = remember { sessionManager.getToken() }
+
+    // ✅ LOG: sesión (solo una vez por composición)
+    LaunchedEffect(Unit) {
+        Log.d("HOME_SESSION", "=========== SESSION READ ===========")
+        Log.d("HOME_SESSION", "savedEmail: $savedEmail")
+        Log.d("HOME_SESSION", "savedToken: ${savedToken?.take(20)}...")
+        Log.d("HOME_SESSION", "isLoggedIn: ${sessionManager.isLoggedIn()}")
+        Log.d("HOME_SESSION", "===================================")
+    }
 
     // Llamada a la API
-    LaunchedEffect(Unit) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val response = api.getProfileAndPlanByName("letal").awaitResponse()
-                if (response.isSuccessful) {
-                    response.body()?.let { body ->
-                        userData = UserData(
-                            user_name = body["user_name"]?.toString() ?: "",
-                            health_plan_name = body["health_plan_name"]?.toString() ?: "",
-                            monthly_budget = body["monthly_budget"]?.toString() ?: "",
-                            insurance_name = body["insurance_name"]?.toString() ?: ""
-                        )
-                    }
-                } else {
-                    errorMsg = "Error ${response.code()}"
-                }
-            } catch (e: Exception) {
-                errorMsg = "Fallo de conexión: ${e.message}"
+    LaunchedEffect(savedEmail) {
+        if (savedEmail.isNullOrBlank()) {
+            errorMsg = "No hay usuario guardado. Inicia sesión nuevamente."
+            Log.e("HOME_API", "savedEmail is null/blank -> cannot call API")
+            return@LaunchedEffect
+        }
+
+        loading = true
+        errorMsg = ""
+
+        try {
+            Log.d("HOME_API", "=========== CALLING API ===========")
+            Log.d("HOME_API", "Param (savedEmail): $savedEmail")
+            Log.d("HOME_API", "==================================")
+
+            val response = withContext(Dispatchers.IO) {
+                // 🔥 Aquí sustituimos "letal" por el usuario real guardado
+                api.getProfileAndPlanByName(savedEmail).awaitResponse()
             }
+
+            // ✅ LOG: respuesta cruda
+            Log.d("HOME_API", "=========== API RESPONSE ===========")
+            Log.d("HOME_API", "HTTP Code: ${response.code()}")
+            Log.d("HOME_API", "isSuccessful: ${response.isSuccessful}")
+            Log.d("HOME_API", "Body: ${response.body()}")
+            Log.d("HOME_API", "====================================")
+
+            if (response.isSuccessful) {
+                response.body()?.let { body ->
+
+                    // ✅ LOG: campos específicos
+                    Log.d("HOME_API", "Parsed user_name: ${body["user_name"]}")
+                    Log.d("HOME_API", "Parsed health_plan_name: ${body["health_plan_name"]}")
+                    Log.d("HOME_API", "Parsed monthly_budget: ${body["monthly_budget"]}")
+                    Log.d("HOME_API", "Parsed insurance_name: ${body["insurance_name"]}")
+
+                    userData = UserData(
+                        user_name = body["user_name"]?.toString() ?: "",
+                        health_plan_name = body["health_plan_name"]?.toString() ?: "",
+                        monthly_budget = body["monthly_budget"]?.toString() ?: "",
+                        insurance_name = body["insurance_name"]?.toString() ?: ""
+                    )
+
+                    Log.d("HOME_API", "✅ userData state updated: $userData")
+                } ?: run {
+                    errorMsg = "Respuesta vacía del servidor."
+                    Log.e("HOME_API", "Response successful but body is null")
+                }
+            } else {
+                errorMsg = "Error ${response.code()}"
+                Log.e("HOME_API", "Response NOT successful. Code=${response.code()}")
+            }
+        } catch (e: Exception) {
+            Log.e("HOME_API", "Exception: ${e.message}", e)
+            errorMsg = "Fallo de conexión: ${e.message}"
+        } finally {
+            loading = false
         }
     }
 
@@ -94,7 +156,7 @@ fun HomeScreen() {
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Logo",
                     modifier = Modifier.size(56.dp),
-                    colorFilter = ColorFilter.tint(Color.White) // <- Lo hace blanco
+                    colorFilter = ColorFilter.tint(Color.White)
                 )
 
                 Text(
@@ -107,10 +169,17 @@ fun HomeScreen() {
                 )
 
                 TextButton(onClick = {
+                    // ✅ Logout: borrar sesión y volver a login
+                    sessionManager.clearSession()
                     val intent = Intent(context, LoginActivity::class.java)
                     context.startActivity(intent)
                 }) {
-                    Text("Salir", color = Color.White,  fontSize = 20.sp,fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Salir",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
 
@@ -138,11 +207,15 @@ fun HomeScreen() {
 
                 // Nombre usuario
                 Text(
-                    text = if (userData.user_name.isNotEmpty()) "Hola ${userData.user_name}" else "Cargando...",
+                    text = when {
+                        loading -> "Cargando..."
+                        userData.user_name.isNotEmpty() -> "Hola ${userData.user_name}"
+                        else -> "Hola"
+                    },
                     fontSize = 22.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A237E) ,
-                            modifier = Modifier.clickable {
+                    color = Color(0xFF1A237E),
+                    modifier = Modifier.clickable {
                         val intent = Intent(context, EditProfileActivity::class.java)
                         context.startActivity(intent)
                     }
@@ -155,7 +228,6 @@ fun HomeScreen() {
 
                 Spacer(modifier = Modifier.height(30.dp))
 
-                // BLOQUES DE INFORMACIÓN - TÍTULO ARRIBA, VALOR ABAJO
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     InfoBlock("Budget Mensual", "${userData.monthly_budget} USD")
                     InfoBlock("Fecha Plan", "21/09/24")
@@ -168,7 +240,6 @@ fun HomeScreen() {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Card Categorías
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
@@ -244,4 +315,3 @@ fun BlueButton(text: String, onClick: () -> Unit) {
         )
     }
 }
-

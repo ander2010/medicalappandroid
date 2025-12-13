@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +25,7 @@ import com.tuapp.network.ApiService
 import com.tuapp.network.LoginRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.awaitResponse
 
 class LoginActivity : ComponentActivity() {
@@ -44,8 +46,14 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     val api = ApiClient.instance.create(ApiService::class.java)
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
+//    var email by rememberSaveable { mutableStateOf("") }
+//    var password by rememberSaveable { mutableStateOf("") }
     var email by remember { mutableStateOf("letal@gmail.com") }
     var password by remember { mutableStateOf("12345678") }
+
     var errorMsg by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
@@ -98,38 +106,63 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
         Button(
             onClick = {
-                loading = true
-                errorMsg = ""
-                scope.launch(Dispatchers.IO) {
+                scope.launch {
+                    loading = true
+                    errorMsg = ""
+
                     try {
-                        val userRes = api.getUserByEmail(email).awaitResponse()
+                        // 1️⃣ Buscar usuario por email
+                        val userRes = withContext(Dispatchers.IO) {
+                            api.getUserByEmail(email).awaitResponse()
+                        }
+
                         if (!userRes.isSuccessful || userRes.body().isNullOrEmpty()) {
                             errorMsg = "Email no registrado"
-                            loading = false
                             return@launch
                         }
 
-                        val loginRes = api.login(LoginRequest(email, password)).awaitResponse()
+                        val userMap = userRes.body()?.firstOrNull()
+                        val userId = (userMap?.get("id") as? Number)?.toInt()
+
+                        if (userId == null) {
+                            errorMsg = "No se pudo obtener el ID del usuario"
+                            Log.e("LOGIN", "User map sin ID: $userMap")
+                            return@launch
+                        }
+
+                        Log.d("LOGIN", "Usuario encontrado -> id=$userId email=$email")
+
+                        // 2️⃣ Login
+                        val loginRes = withContext(Dispatchers.IO) {
+                            api.login(LoginRequest(email, password)).awaitResponse()
+                        }
+
                         if (loginRes.isSuccessful) {
-                            Log.d("LOGIN", "Token: ${loginRes.body()?.get("token")}")
-                            loading = false
+                            val token = loginRes.body()?.get("token") as? String ?: ""
+
+
+                            sessionManager.saveSession(
+                                token = token,
+                                email = email,
+                                userId = userId
+                            )
+
+                            Log.d("LOGIN", "Sesión guardada -> id=$userId token=${token.take(20)}...")
                             onLoginSuccess()
                         } else {
                             errorMsg = "Credenciales incorrectas"
-                            loading = false
                         }
 
                     } catch (e: Exception) {
                         Log.e("LOGIN", "Error: ${e.message}", e)
                         errorMsg = "Error de conexión"
+                    } finally {
                         loading = false
                     }
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp)
-        ) {
+            }
+        )
+        {
             if (loading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
             } else {
@@ -137,7 +170,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             }
         }
 
-        val context = LocalContext.current
         TextButton(
             onClick = {
                 val intent = Intent(context, RegisterActivity::class.java)
