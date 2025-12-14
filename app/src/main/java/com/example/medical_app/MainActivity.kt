@@ -78,7 +78,7 @@ fun HomeTopBar(onLogout: () -> Unit) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Logo",
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(40.dp),
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                 )
             }

@@ -72,17 +72,17 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top // ✅ ya no Center
         ) {
-            Spacer(modifier = Modifier.height(48.dp)) // ✅ aire arriba
+            Spacer(modifier = Modifier.height(50.dp)) // ✅ aire arriba
 
             // Logo (tu logo) tintado en violeta
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Pharma Express Logo",
-                modifier = Modifier.size(130.dp),
+                modifier = Modifier.size(160.dp),
                 colorFilter = ColorFilter.tint(violet)
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Pharma Express",
