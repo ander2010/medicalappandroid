@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Response
 import com.tuapp.network.UserInformationResponse
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 // ——————————— Models ———————————
 
@@ -888,16 +889,25 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
     }
 
     // ——— UI ———
+    // ——— UI ———
+    val violet = MaterialTheme.colorScheme.primary
+    val onViolet = MaterialTheme.colorScheme.onPrimary
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Assignments", color = Color.White) },
+                title = { Text("Assignments", color = onViolet, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = onViolet)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF2979FF))
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = violet,
+                    titleContentColor = onViolet,
+                    navigationIconContentColor = onViolet,
+                    actionIconContentColor = onViolet
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -906,63 +916,163 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Text(
-                "$userName, tienes $$budget y te quedan $${"%.2f".format(remainingBudget)} — $insuranceName",
-                fontWeight = FontWeight.Medium
-            )
 
-            Spacer(Modifier.height(8.dp))
-            if (mesCompletado) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = msgMesCompletado.ifBlank { "✅ Ya este mes usted completó su pedido." },
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.SemiBold
-                )
-            } else {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // ✅ Resumen pro (no cambia lógica: solo usa tus variables)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(strokeWidth = 3.dp)
-                } else {
-                    when {
-                        pedidoFinalizado -> {
-                            Text("✅ Tu pedido ha sido completado", color = Color(0xFF4CAF50))
-                        }
-                        (pedidoId != null) || pedidoEnProgreso -> {
-                            Button(
-//                                onClick = { handleUpdate() },
-                                onClick = { handleUpdate() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
-                            ) { Text("Update", color = Color.White) }
-                            Button(
-                                onClick = { handleFinalizar() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                            ) { Text("Finalizar Pedido", color = Color.White) }
-                        }
-                        else -> {
-                            Button(
-                                onClick = { handleSave() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
-                            ) { Text("Save", color = Color.White) }
-                        }
-                  }
-               }
-            }
-}
-            Spacer(Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
 
+                    // 🔹 LINEA 1: Email + Insurance
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = savedEmail ?: "—",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Text(
+                            text = insuranceName.ifBlank { "—" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 🔹 LINEA 2: Budget + Remaining
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Budget: $${"%.2f".format(budget)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Text(
+                            text = "Remaining: $${"%.2f".format(remainingBudget)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+            }
+                Spacer(Modifier.height(12.dp))
+
+            // ✅ Mensaje de mes completado (igual lógica, solo mejor vista)
+            if (mesCompletado) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = msgMesCompletado.ifBlank { "✅ Ya este mes usted completó su pedido." },
+                            color = Color(0xFF2E7D32),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+            } else {
+                // ✅ Barra de acciones pro (misma lógica)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(strokeWidth = 3.dp)
+                        } else {
+                            when {
+                                pedidoFinalizado -> {
+                                    Text(
+                                        "✅ Tu pedido ha sido completado",
+                                        color = Color(0xFF2E7D32),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                (pedidoId != null) || pedidoEnProgreso -> {
+                                    Button(
+                                        onClick = { handleUpdate() },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = violet)
+                                    ) {
+                                        Text("Update", color = onViolet, fontWeight = FontWeight.SemiBold)
+                                    }
+
+                                    Button(
+                                        onClick = { handleFinalizar() },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                    ) {
+                                        Text("Finalizar", color = Color.White, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+
+                                else -> {
+                                    Button(
+                                        onClick = { handleSave() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = violet)
+                                    ) {
+                                        Text("Save", color = onViolet, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // ✅ Lista (misma lógica, mejor look)
             LazyColumn {
                 sections.forEach { section ->
                     item {
                         Card(
-                            Modifier
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 6.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column {
@@ -973,21 +1083,26 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
                                             expandedCategory =
                                                 if (expandedCategory == section.category) null else section.category
                                         }
-                                        .padding(12.dp),
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(section.category, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        section.category,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     Icon(
                                         imageVector = if (expandedCategory == section.category)
                                             Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                        contentDescription = null
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
                                 if (expandedCategory == section.category) {
                                     section.items.forEach { item ->
-                                        Divider()
+                                        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                                         ListItem(
                                             leadingContent = {
                                                 Checkbox(
@@ -995,11 +1110,18 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
                                                     onCheckedChange = { onToggle(item.id, item.price) }
                                                 )
                                             },
-                                            headlineContent = { Text("${item.code} | ${item.nombre}") },
+                                            headlineContent = {
+                                                Text(
+                                                    "${item.code} | ${item.nombre}",
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            },
                                             supportingContent = {
                                                 Text("${item.nombremarca} • ${item.dosis} • ${item.tamano}")
                                             },
-                                            trailingContent = { Text("$${"%.2f".format(item.price)}") }
+                                            trailingContent = {
+                                                Text("$${"%.2f".format(item.price)}")
+                                            }
                                         )
                                     }
                                 }
@@ -1010,4 +1132,5 @@ fun AssignmentDetailScreen(onBack: () -> Unit) {
             }
         }
     }
+
 }

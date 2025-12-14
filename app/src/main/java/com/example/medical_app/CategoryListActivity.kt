@@ -10,17 +10,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.medical_app.ui.components.AppScreen
 import com.tuapp.network.ApiClient
 import com.tuapp.network.ApiService
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +37,6 @@ class CategoryListActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // requerido para CenterAlignedTopAppBar
 @Composable
 fun CategoryListScreen(onBack: () -> Unit) {
     val api = ApiClient.instance.create(ApiService::class.java)
@@ -47,7 +45,7 @@ fun CategoryListScreen(onBack: () -> Unit) {
     var categories by remember { mutableStateOf(listOf<Categoria>()) }
     var expandedIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Llamar API
+    // Llamar API (MISMA LÓGICA)
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -67,34 +65,23 @@ fun CategoryListScreen(onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Category List", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF2979FF)
-                )
-            )
-        }
-    ) { innerPadding ->
+    AppScreen(
+        title = "Categories",
+        onBack = onBack
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             itemsIndexed(categories) { index, item ->
                 Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Row(
@@ -108,23 +95,25 @@ fun CategoryListScreen(onBack: () -> Unit) {
                         ) {
                             Text(
                                 text = item.nombre,
-                                fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1A1A)
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Icon(
                                 imageVector = if (expandedIndex == index) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = "Expand"
+                                contentDescription = "Expand",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         if (expandedIndex == index) {
                             Text(
                                 text = item.descripcion,
-                                fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                                color = Color(0xFF444444),
-                                modifier = Modifier.padding(vertical = 12.dp)
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 10.dp, bottom = 12.dp)
                             )
+
                             val context = LocalContext.current
                             Button(
                                 onClick = {
@@ -132,11 +121,12 @@ fun CategoryListScreen(onBack: () -> Unit) {
                                     intent.putExtra("category", item.nombre)
                                     context.startActivity(intent)
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF)),
-                                shape = RoundedCornerShape(8.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(14.dp)
                             ) {
-                                Text("ASSOCIATED MEDICATIONS", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Associated medications", fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

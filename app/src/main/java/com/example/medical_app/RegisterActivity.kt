@@ -6,17 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.medical_app.ui.theme.AppTheme
 import com.tuapp.network.ApiClient
 import com.tuapp.network.ApiService
 import kotlinx.coroutines.Dispatchers
@@ -27,20 +30,22 @@ class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RegisterScreen(onRegisterSuccess = {
-                val intent = Intent(this, LoginActivity::class.java)
-                startActivity(intent)
-                finish()
-            })
+            AppTheme {
+                RegisterScreen(onRegisterSuccess = {
+                    val intent = Intent(this, LoginActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                })
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(onRegisterSuccess: () -> Unit) {
     val api = ApiClient.instance.create(ApiService::class.java)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var name by remember { mutableStateOf("ander") }
     var username by remember { mutableStateOf("ander") }
@@ -63,95 +68,156 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit) {
                 val response = api.register(data).awaitResponse()
                 if (response.isSuccessful) {
                     onRegisterSuccess()
-                } else {
-                    println("❌ Error al registrar: ${response.errorBody()?.string()}")
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             } finally {
                 loading = false
             }
         }
     }
 
-    Scaffold { innerPadding ->
+    val violet = MaterialTheme.colorScheme.primary
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(20.dp),
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            // --- Logo de Pharma Express ---
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Logo violeta
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Pharma Express Logo",
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier.size(130.dp),
+                colorFilter = ColorFilter.tint(violet)
             )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             Text(
                 text = "Pharma Express",
-                fontSize = 22.sp,
+                fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E88E5),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
 
-            // --- Campos de Registro ---
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Nombre") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Usuario") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
-            )
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Contraseña") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
-            )
+            Spacer(modifier = Modifier.height(26.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 12.dp)
+            // Card del formulario
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Checkbox(
-                    checked = policy,
-                    onCheckedChange = { policy = it },
-                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2979FF))
-                )
-                Text("Acepto la política", modifier = Modifier.padding(start = 8.dp))
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Nombre") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = violet,
+                            cursorColor = violet
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Usuario") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = violet,
+                            cursorColor = violet
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = violet,
+                            cursorColor = violet
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Contraseña") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = violet,
+                            cursorColor = violet
+                        )
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = policy,
+                            onCheckedChange = { policy = it },
+                            colors = CheckboxDefaults.colors(checkedColor = violet)
+                        )
+                        Text(
+                            "Acepto la política",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
 
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Botón registrar
             Button(
                 onClick = { handleSubmit() },
                 enabled = !loading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
+                    .height(56.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = violet),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-                Text(if (loading) "Registrando..." else "Registrarme", color = Color.White)
+                Text(
+                    if (loading) "Registrando..." else "Registrarme",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            TextButton(
+                onClick = {
+                    context.startActivity(Intent(context, LoginActivity::class.java))
+                }
+            ) {
+                Text(
+                    "Ya tengo cuenta",
+                    color = violet,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

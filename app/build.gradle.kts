@@ -50,34 +50,35 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
+
+    // Material 3 (principal)
     implementation(libs.androidx.material3)
+
+    // Icons (útiles para back button, etc.)
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
+
+    // Material 2 (SOLO si usas componentes antiguos en algunas pantallas)
+    implementation("androidx.compose.material:material:1.6.8")
+
+    // Networking / imágenes
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    implementation("androidx.compose.material:material-icons-extended:1.6.8")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    testImplementation(libs.junit)
-    // ✅ Material2 (para TopAppBar, Scaffold, OutlinedTextField clásicos)
-    implementation("androidx.compose.material:material:1.6.8")
 
-    // ✅ Material3 (para pantallas nuevas que ya usan M3)
-    implementation("androidx.compose.material3:material3:1.2.1")
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    // Retrofit
-
 }

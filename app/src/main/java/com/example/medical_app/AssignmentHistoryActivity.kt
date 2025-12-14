@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,9 +48,7 @@ data class Medicina(
 class AssignmentHistoryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            AssignmentHistoryScreen(onBack = { finish() })
-        }
+        setContent { AssignmentHistoryScreen(onBack = { finish() }) }
     }
 }
 
@@ -62,7 +61,10 @@ fun AssignmentHistoryScreen(onBack: () -> Unit) {
     var pedidos by remember { mutableStateOf(listOf<Pedido>()) }
     var expandedId by remember { mutableStateOf<Int?>(null) }
 
-    // Cargar historial
+    // ✅ SOLO UI: usar violeta del theme
+    val violet = MaterialTheme.colorScheme.primary
+
+    // Cargar historial (MISMA LOGICA)
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -93,47 +95,112 @@ fun AssignmentHistoryScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Encabezado
-        TopAppBar(
-            title = { Text("Assignment History", color = Color.White) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-            },
-            colors = TopAppBarDefaults.mediumTopAppBarColors(containerColor = Color(0xFF2979FF))
-        )
-
-        if (pedidos.isNotEmpty()) {
-            Text(
-                text = "Hola ${pedidos.first().user_name ?: "Usuario"}",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Assignment History",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = violet,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
+    ) { padding ->
 
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            items(pedidos) { pedido ->
-                PedidoCard(
-                    pedido = pedido,
-                    expanded = expandedId == pedido.id,
-                    onExpandToggle = {
-                        expandedId = if (expandedId == pedido.id) null else pedido.id
+
+            if (pedidos.isNotEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Hola ${pedidos.first().user_name ?: "Usuario"}",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Aquí está el historial de tus pedidos.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                )
+                }
+                Spacer(Modifier.height(14.dp))
+            } else {
+                // Empty state simple (solo UI)
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        Modifier.padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "No hay historial todavía",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Cuando hagas tu primer pedido, aparecerá aquí.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(pedidos) { pedido ->
+                    PedidoCardProUI(
+                        pedido = pedido,
+                        expanded = expandedId == pedido.id,
+                        onExpandToggle = {
+                            expandedId = if (expandedId == pedido.id) null else pedido.id
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun PedidoCard(pedido: Pedido, expanded: Boolean, onExpandToggle: () -> Unit) {
+fun PedidoCardProUI(pedido: Pedido, expanded: Boolean, onExpandToggle: () -> Unit) {
+    val violet = MaterialTheme.colorScheme.primary
+
     val date = try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -142,44 +209,117 @@ fun PedidoCard(pedido: Pedido, expanded: Boolean, onExpandToggle: () -> Unit) {
         pedido.fecha_pedido
     }
 
+    val isCompleted = pedido.status == "C"
+    val statusLabel = if (isCompleted) "Completado" else "En progreso"
+
     Card(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
             .animateContentSize(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F1F1))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("Fecha: $date", fontSize = 16.sp)
-            Text("Costo total: $${pedido.costototal}", fontSize = 16.sp)
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Fecha",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        date,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                AssistChip(
+                    onClick = { },
+                    label = { Text(statusLabel) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (isCompleted) Color(0xFFE8F5E9) else Color(0xFFF3E5F5),
+                        labelColor = if (isCompleted) Color(0xFF2E7D32) else Color(0xFF6A1B9A)
+                    )
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
             Text(
-                "Estado: ${if (pedido.status == "C") "Completado" else "En progreso"}",
-                fontSize = 16.sp
+                "Total",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "$${"%.2f".format(pedido.costototal)}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            Button(
-                onClick = onExpandToggle,
-                modifier = Modifier.padding(top = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
+            Spacer(Modifier.height(12.dp))
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            Spacer(Modifier.height(10.dp))
+
+            // “Mostrar/Ocultar” como fila clickeable pro (en vez de botón azul)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpandToggle() }
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (expanded) "Ocultar Medicinas" else "Mostrar Medicinas",
-                    color = Color.White
+                    text = if (expanded) "Ocultar medicinas" else "Mostrar medicinas",
+                    color = violet,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = violet
                 )
             }
 
             if (expanded) {
-                Column(Modifier.padding(top = 8.dp)) {
+                Spacer(Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     pedido.medicinas.forEach { med ->
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("🩺 ${med.nombre}", fontWeight = FontWeight.Bold)
-                            Text("📝 ${med.descripcion}", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
-                            Text("🏷 Categoría ID: ${med.categoria}")
+                            Column(Modifier.padding(12.dp)) {
+                                Text(
+                                    text = med.nombre,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = med.descripcion,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "Categoría: ${med.categoria}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

@@ -9,17 +9,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.medical_app.ui.components.AppScreen
 import com.tuapp.network.ApiClient
 import com.tuapp.network.ApiService
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +42,6 @@ class MedicineListActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MedicineListScreen(category: String, onBack: () -> Unit) {
     val api = ApiClient.instance.create(ApiService::class.java)
@@ -53,7 +50,7 @@ fun MedicineListScreen(category: String, onBack: () -> Unit) {
     var medicines by remember { mutableStateOf(listOf<Medicine>()) }
     var expandedIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Llamada API al cargar
+    // ✅ MISMA LÓGICA: Llamada API al cargar
     LaunchedEffect(category) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -76,36 +73,27 @@ fun MedicineListScreen(category: String, onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(category, color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF2979FF)
-                )
-            )
-        }
-    ) { innerPadding ->
+    // ✅ MISMO HEADER VIOLETA (AppScreen)
+    AppScreen(
+        title = category.ifBlank { "Medicines" },
+        onBack = onBack
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             itemsIndexed(medicines) { index, med ->
                 Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
                     Column(Modifier.padding(16.dp)) {
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -117,27 +105,31 @@ fun MedicineListScreen(category: String, onBack: () -> Unit) {
                         ) {
                             Text(
                                 text = med.nombre,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1A1A)
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Icon(
                                 imageVector = if (expandedIndex == index) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = "Expand"
+                                contentDescription = "Expand",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         if (expandedIndex == index) {
+                            Spacer(Modifier.height(10.dp))
+
                             Text(
                                 text = med.description ?: "Sin descripción",
-                                fontSize = 14.sp,
-                                color = Color(0xFF444444),
-                                modifier = Modifier.padding(vertical = 10.dp)
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            InfoRow("Dosis:", med.dosis ?: "No disponible")
-                            InfoRow("Tamaño:", med.tamano ?: "No disponible")
-                            InfoRow("Costo:", med.costo?.let { "$$it" } ?: "0")
+                            Spacer(Modifier.height(12.dp))
+
+                            InfoRow("Dosis", med.dosis ?: "No disponible")
+                            InfoRow("Tamaño", med.tamano ?: "No disponible")
+                            InfoRow("Costo", med.costo?.let { "$$it" } ?: "0")
                         }
                     }
                 }
@@ -149,10 +141,22 @@ fun MedicineListScreen(category: String, onBack: () -> Unit) {
 @Composable
 fun InfoRow(label: String, value: String) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(bottom = 6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("$label ", fontWeight = FontWeight.Bold)
-        Text(value)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
